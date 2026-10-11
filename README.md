@@ -34,18 +34,15 @@ Recognized schemes: `http`, `https`, `file`, `ws`, `wss`. Other schemes parse as
 | Path | Role |
 |------|------|
 | `src/url.hy` | `Url`, `UrlError`, parse/join/query/percent |
-| `coil.toml` | `[package] name = "url"` so `use url::{…}` resolves |
+| `coil.toml` | spool manifest (`[package] name = "url"`); coil does not read it |
 
 ## Consume
 
-Sibling checkout, or a git dep plus `coil.lock` pin. See [docs/consume.md](docs/consume.md).
-
-```toml
-[dependencies]
-url = { git = "https://github.com/ardax-corp/coil-url.git" }
+```bash
+spool add url --git https://github.com/ardax-corp/coil-url.git --rev <commit SHA>
 ```
 
-`{ git }` is the parseable form. `version` is optional schema, not a tag. The pin is `coil.lock` `rev` + `content_hash`. The compiler does not follow path deps; put `../coil-url/src` on `[module] roots`.
+No tags yet, so pin a commit. Without spool, pass `--root ../coil-url/src` to `coil`. See [docs/consume.md](docs/consume.md).
 
 ## License
 
