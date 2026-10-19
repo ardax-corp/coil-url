@@ -103,7 +103,7 @@ fn ascii_lower(string s) -> Result<string, UrlError> {
     let b = to_bytes(s);
     let out: Vec<byte> = Vec::new();
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         out.push(ascii_lower_byte(b[i]));
         i = i + 1;
     }
@@ -136,7 +136,7 @@ fn hex_digit(int n) -> byte {
 fn host_needs_brackets(string host) -> bool {
     let b = to_bytes(host);
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         if b[i] == ":" {
             return true;
         }
@@ -154,7 +154,7 @@ fn percent_encode(string s) -> string {
     let b = to_bytes(s);
     let out: Vec<byte> = Vec::new();
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         let c = b[i];
         if is_unreserved(c) {
             out.push(c);
@@ -177,10 +177,10 @@ fn percent_decode(string s) -> Result<string, UrlError> {
     let b = to_bytes(s);
     let out: Vec<byte> = Vec::new();
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         let c = b[i];
         if c == "%" {
-            if i + 2 >= len(b) {
+            if i + 2 >= b.len() {
                 raise invalid("truncated percent");
             }
             let hi = hex_val(b[i + 1]);
@@ -223,7 +223,7 @@ fn check_pct(Vec<byte> b, int start, int end) -> Result<(), UrlError> {
 
 fn last_slash(string s) -> int {
     let b = to_bytes(s);
-    let i = len(b);
+    let i = b.len();
     while i > 0 {
         i = i - 1;
         if b[i] == "/" {
@@ -236,11 +236,11 @@ fn last_slash(string s) -> int {
 fn starts_with_str(string s, string prefix) -> bool {
     let a = to_bytes(s);
     let p = to_bytes(prefix);
-    if len(p) > len(a) {
+    if p.len() > a.len() {
         return false;
     }
     let i = 0;
-    while i < len(p) {
+    while i < p.len() {
         if a[i] != p[i] {
             return false;
         }
@@ -266,11 +266,11 @@ fn merge_path(string base_path, bool has_authority, string rel) -> Result<string
 
 fn starts_with_bytes(Vec<byte> b, string prefix) -> bool {
     let p = to_bytes(prefix);
-    if len(p) > len(b) {
+    if p.len() > b.len() {
         return false;
     }
     let i = 0;
-    while i < len(p) {
+    while i < p.len() {
         if b[i] != p[i] {
             return false;
         }
@@ -281,11 +281,11 @@ fn starts_with_bytes(Vec<byte> b, string prefix) -> bool {
 
 fn eq_bytes(Vec<byte> b, string s) -> bool {
     let p = to_bytes(s);
-    if len(p) != len(b) {
+    if p.len() != b.len() {
         return false;
     }
     let i = 0;
-    while i < len(p) {
+    while i < p.len() {
         if b[i] != p[i] {
             return false;
         }
@@ -297,7 +297,7 @@ fn eq_bytes(Vec<byte> b, string s) -> bool {
 fn drop_n(Vec<byte> b, int n) -> Vec<byte> {
     let out: Vec<byte> = Vec::new();
     let i = n;
-    while i < len(b) {
+    while i < b.len() {
         out.push(b[i]);
         i = i + 1;
     }
@@ -308,7 +308,7 @@ fn replace_prefix(Vec<byte> b, int skip) -> Vec<byte> {
     let out: Vec<byte> = Vec::new();
     out.push("/" as byte);
     let i = skip + 1;
-    while i < len(b) {
+    while i < b.len() {
         out.push(b[i]);
         i = i + 1;
     }
@@ -316,7 +316,7 @@ fn replace_prefix(Vec<byte> b, int skip) -> Vec<byte> {
 }
 
 fn pop_segment(Vec<byte> out) -> Vec<byte> {
-    let n = len(out);
+    let n = out.len();
     if n == 0 {
         return out;
     }
@@ -339,7 +339,7 @@ fn pop_segment(Vec<byte> out) -> Vec<byte> {
 }
 
 fn next_segment(Vec<byte> inp) -> (Vec<byte>, Vec<byte>) {
-    let n = len(inp);
+    let n = inp.len();
     let i = 0;
     if n > 0 {
         if inp[0] == "/" {
@@ -369,7 +369,7 @@ fn next_segment(Vec<byte> inp) -> (Vec<byte>, Vec<byte>) {
 fn remove_dot_segments(string path) -> Result<string, UrlError> {
     let inp = to_bytes(path);
     let out: Vec<byte> = Vec::new();
-    while len(inp) > 0 {
+    while inp.len() > 0 {
         if starts_with_bytes(inp, "../") {
             inp = drop_n(inp, 3);
             continue;
@@ -406,7 +406,7 @@ fn remove_dot_segments(string path) -> Result<string, UrlError> {
         }
         let (seg, rest) = next_segment(inp);
         let k = 0;
-        while k < len(seg) {
+        while k < seg.len() {
             out.push(seg[k]);
             k = k + 1;
         }
@@ -431,7 +431,7 @@ fn first_colon_in_segment(Vec<byte> b, int start, int end) -> int {
 
 impl Parser {
     pub fn at_end() -> bool {
-        return self.i >= len(self.bytes);
+        return self.i >= self.bytes.len();
     }
 
     fn cur() -> byte {
@@ -457,7 +457,7 @@ impl Parser {
     }
 
     fn hier_limit() -> int {
-        let n = len(self.bytes);
+        let n = self.bytes.len();
         let i = self.i;
         while i < n {
             let c = self.bytes[i];
@@ -478,7 +478,7 @@ impl Parser {
         }
         let start = self.i;
         let j = self.i + 1;
-        let n = len(self.bytes);
+        let n = self.bytes.len();
         while j < n {
             if !is_scheme_char(self.bytes[j]) {
                 break;
@@ -568,7 +568,7 @@ impl Parser {
 
     fn parse_until(byte stop1, byte stop2) -> Result<string, UrlError> {
         let start = self.i;
-        let n = len(self.bytes);
+        let n = self.bytes.len();
         while self.i < n {
             let c = self.cur();
             if c == stop1 || c == stop2 {
@@ -581,7 +581,7 @@ impl Parser {
     }
 
     pub fn parse_url() -> Result<Url, UrlError> {
-        let n = len(self.bytes);
+        let n = self.bytes.len();
         if n == 0 {
             return new Url("", "", "", 0, "", "", "", false, false, false);
         }
@@ -621,7 +621,7 @@ impl Parser {
         }
         let path = self.parse_until("?", "#")?;
         if scheme == "" {
-            let colon = first_colon_in_segment(to_bytes(path), 0, len(to_bytes(path)));
+            let colon = first_colon_in_segment(to_bytes(path), 0, to_bytes(path).len());
             if colon >= 0 {
                 raise invalid("colon in relative path");
             }
@@ -639,7 +639,7 @@ impl Parser {
             has_fragment = true;
             self.i = self.i + 1;
             let start = self.i;
-            self.i = len(self.bytes);
+            self.i = self.bytes.len();
             check_pct(self.bytes, start, self.i)?;
             fragment = slice_str(self.bytes, start, self.i)?;
         }
@@ -664,7 +664,7 @@ impl Parser {
 fn query_pair_key(string pair) -> Result<string, UrlError> {
     let b = to_bytes(pair);
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         if b[i] == "=" {
             return percent_decode(slice_str(b, 0, i)?)?;
         }
@@ -676,9 +676,9 @@ fn query_pair_key(string pair) -> Result<string, UrlError> {
 fn query_pair_value(string pair) -> Result<string, UrlError> {
     let b = to_bytes(pair);
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         if b[i] == "=" {
-            return percent_decode(slice_str(b, i + 1, len(b))?)?;
+            return percent_decode(slice_str(b, i + 1, b.len())?)?;
         }
         i = i + 1;
     }
@@ -690,14 +690,14 @@ fn split_amp(string s) -> Result<Vec<string>, UrlError> {
     let out: Vec<string> = Vec::new();
     let start = 0;
     let i = 0;
-    while i < len(b) {
+    while i < b.len() {
         if b[i] == "&" {
             out.push(slice_str(b, start, i)?);
             start = i + 1;
         }
         i = i + 1;
     }
-    out.push(slice_str(b, start, len(b))?);
+    out.push(slice_str(b, start, b.len())?);
     return out;
 }
 
@@ -755,7 +755,7 @@ impl Url {
             },
         };
         let i = 0;
-        while i < len(parts) {
+        while i < parts.len() {
             let k = match query_pair_key(parts[i]) {
                 Result::Ok(x) => x,
                 Result::Err(_) => "",
@@ -786,7 +786,7 @@ impl Url {
         let found = false;
         let i = 0;
         if self.has_query {
-            while i < len(parts) {
+            while i < parts.len() {
                 let pair = parts[i];
                 let k = match query_pair_key(pair) {
                     Result::Ok(x) => x,
