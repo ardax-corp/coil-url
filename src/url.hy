@@ -2,22 +2,70 @@
 // Missing optional pieces are empty string / port 0. No native / FFI.
 use string::{from_bytes, to_bytes, format};
 
-/// Parse / join / percent-decode failure. `message` is a short reason, not a panic.
+/// Why `parse`, `join` or `percent_decode` rejected its input.
+///
+/// Bad input is always reported this way, never with a panic.
+///
+/// # Examples
+///
+/// ```
+/// use url::{parse, UrlError};
+/// # use tests::assert;
+/// let why = match parse("http://example.com:99999/") {
+///     Result::Ok(_) => "",
+///     Result::Err(e) => match e {
+///         UrlError::Invalid { message } => message,
+///     },
+/// };
+/// assert!(why == "port range");
+/// ```
 enum UrlError {
+    /// The input is not a valid URI reference. `message` is a short reason
+    /// such as `"empty host"`, `"bad port"`, `"bad percent"` or `"whitespace"`.
     Invalid { message: string },
 }
 
-/// RFC 3986 URI or relative reference.
+/// A parsed RFC 3986 URI or relative reference.
+///
+/// Each component is kept as written, still percent-encoded, except that the
+/// scheme is lowercased and so is the host for `http`, `https`, `ws` and
+/// `wss`. A missing component is `""` (port `0`); the `has_*` flags tell a
+/// missing query, fragment or authority apart from an empty one. Methods that
+/// change a `Url` return a new one and leave the original as it was.
+///
+/// # Examples
+///
+/// ```
+/// use url::{parse};
+/// # use tests::assert;
+/// let u = match parse("HTTPS://ada@Example.com:8443/a/b?x=1#top") {
+///     Result::Ok(u) => u,
+///     Result::Err(_) => panic "bad url",
+/// };
+/// assert!(u.scheme == "https" && u.userinfo == "ada" && u.host == "example.com");
+/// assert!(u.port == 8443 && u.path == "/a/b" && u.query == "x=1" && u.fragment == "top");
+/// assert!(u.to_string() == "https://ada@example.com:8443/a/b?x=1#top");
+/// ```
 class Url {
+    /// The scheme, lowercased (`"https"`), or `""` for a relative reference.
     pub scheme: string,
+    /// The part before `@` in the authority (`"user:pass"`), or `""`.
     pub userinfo: string,
+    /// The host, without brackets for an IPv6 literal (`"::1"`), or `""`.
     pub host: string,
+    /// The port, or `0` when none is given. An explicit `:0` also reads as `0`.
     pub port: int,
+    /// The path as written, still percent-encoded. May be `""`.
     pub path: string,
+    /// The text after `?`, without the `?`, still percent-encoded.
     pub query: string,
+    /// The text after `#`, without the `#`, still percent-encoded.
     pub fragment: string,
+    /// `true` when the input had `//` and an authority (even an empty one, as in `file:///x`).
     pub has_authority: bool,
+    /// `true` when the input had a `?`, even with nothing after it.
     pub has_query: bool,
+    /// `true` when the input had a `#`, even with nothing after it.
     pub has_fragment: bool,
 }
 
@@ -149,7 +197,21 @@ fn is_http_family(string scheme) -> bool {
     return scheme == "http" || scheme == "https" || scheme == "ws" || scheme == "wss";
 }
 
-/// Percent-encode bytes that are not RFC 3986 unreserved.
+/// Percent-encodes every byte of `s` that is not an RFC 3986 unreserved character.
+///
+/// Letters, digits and `-` `.` `_` `~` are kept; every other byte, including
+/// each byte of a multi-byte UTF-8 character, becomes `%HH` with uppercase hex.
+/// A space becomes `%20`, never `+`.
+///
+/// # Examples
+///
+/// ```
+/// use url::{percent_encode};
+/// # use tests::assert;
+/// assert!(percent_encode("a b/c") == "a%20b%2Fc");
+/// assert!(percent_encode("caf\u{e9}") == "caf%C3%A9");
+/// assert!(percent_encode("safe-._~") == "safe-._~");
+/// ```
 fn percent_encode(string s) -> string {
     let b = to_bytes(s);
     let out: Vec<byte> = Vec::new();
@@ -172,7 +234,22 @@ fn percent_encode(string s) -> string {
     };
 }
 
-/// Percent-decode `%HH` sequences. Invalid encodings are `UrlError`.
+/// Decodes the `%HH` sequences in `s`; other bytes are kept as they are.
+///
+/// `+` is not turned into a space. Returns `UrlError::Invalid` when a `%` is
+/// not followed by two hex digits (`"truncated percent"`, `"bad percent"`) or
+/// when the decoded bytes are not valid UTF-8 (`"utf8"`).
+///
+/// # Examples
+///
+/// ```
+/// use url::{percent_decode, percent_encode};
+/// # use tests::assert;
+/// assert!(percent_decode("a%20b").unwrap_or("") == "a b");
+/// assert!(percent_decode("caf%C3%A9").unwrap_or("") == "caf\u{e9}");
+/// assert!(percent_decode("100%").is_err());
+/// assert!(percent_decode(percent_encode("x=1&y")).unwrap_or("") == "x=1&y");
+/// ```
 fn percent_decode(string s) -> Result<string, UrlError> {
     let b = to_bytes(s);
     let out: Vec<byte> = Vec::new();
@@ -702,13 +779,45 @@ fn split_amp(string s) -> Result<Vec<string>, UrlError> {
 }
 
 impl Url {
-    /// Parse an absolute URI or relative reference.
+    /// Parses an absolute URI or a relative reference. Same as the free `parse`.
+    ///
+    /// See `parse` for what is accepted and the errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use url::{Url};
+    /// # use tests::assert;
+    /// let u = match Url::parse("ws://localhost:9000/chat") {
+    ///     Result::Ok(u) => u,
+    ///     Result::Err(_) => panic "bad url",
+    /// };
+    /// assert!(u.host == "localhost" && u.port == 9000);
+    /// assert!(Url::parse("http://").is_err());
+    /// ```
     pub static fn parse(string s) -> Result<Url, UrlError> {
         let p = new Parser(to_bytes(s), 0);
         return p.parse_url()?;
     }
 
-    /// RFC 3986 reconstruction. Port 0 is omitted.
+    /// Writes the URL back out as text (RFC 3986 §5.3 recomposition).
+    ///
+    /// Components are written as stored, so parsing and writing back gives the
+    /// input again, apart from the lowercased scheme and host and a dropped
+    /// empty or `:0` port. Port `0` is left out, and a host with a `:` (IPv6)
+    /// is wrapped in `[` `]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use url::{parse};
+    /// # use tests::assert;
+    /// let u = match parse("HTTP://[::1]:8080/x?") {
+    ///     Result::Ok(u) => u,
+    ///     Result::Err(_) => panic "bad url",
+    /// };
+    /// assert!(u.to_string() == "http://[::1]:8080/x?");
+    /// ```
     pub fn to_string() -> string {
         let out = "";
         if self.scheme != "" {
@@ -738,11 +847,31 @@ impl Url {
         return out;
     }
 
+    /// Same as `to_string`.
     pub fn string() -> string {
         return self.to_string();
     }
 
-    /// First matching query value, percent-decoded. Missing key → empty string.
+    /// Returns the value of the first `key=value` pair in the query, percent-decoded.
+    ///
+    /// The query is split on `&` and each pair on its first `=`; keys are
+    /// percent-decoded before they are compared with `key`. Returns `""` when
+    /// the key is missing, has no `=`, or does not decode. Use `has_query` and
+    /// the raw `query` field to tell those cases apart.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use url::{parse};
+    /// # use tests::assert;
+    /// let u = match parse("https://example.com/search?q=hello%20world&page=2&page=3") {
+    ///     Result::Ok(u) => u,
+    ///     Result::Err(_) => panic "bad url",
+    /// };
+    /// assert!(u.query_get("q") == "hello world");
+    /// assert!(u.query_get("page") == "2");
+    /// assert!(u.query_get("lang") == "");
+    /// ```
     pub fn query_get(string key) -> string {
         if !self.has_query {
             return "";
@@ -771,7 +900,26 @@ impl Url {
         return "";
     }
 
-    /// Set or replace `key` (encoded). Returns a new `Url`.
+    /// Returns a copy of this URL with `key` set to `value` in the query.
+    ///
+    /// `key` and `value` are percent-encoded. Every existing pair with that key
+    /// is replaced; when there is none, the pair is appended (or becomes the
+    /// whole query). Other pairs keep their order and spelling. `self` is not
+    /// changed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use url::{parse};
+    /// # use tests::assert;
+    /// let u = match parse("http://example.com/p?a=1&b=2") {
+    ///     Result::Ok(u) => u,
+    ///     Result::Err(_) => panic "bad url",
+    /// };
+    /// assert!(u.query_set("a", "x y").to_string() == "http://example.com/p?a=x%20y&b=2");
+    /// assert!(u.query_set("c", "3").to_string() == "http://example.com/p?a=1&b=2&c=3");
+    /// assert!(u.query == "a=1&b=2");
+    /// ```
     pub fn query_set(string key, string value) -> Url {
         let ek = percent_encode(key);
         let ev = percent_encode(value);
@@ -832,7 +980,25 @@ impl Url {
         );
     }
 
-    /// RFC 3986 relative resolution against `self`.
+    /// Resolves `reference` against this URL as a base (RFC 3986 §5.2). Same as the free `join`.
+    ///
+    /// See `join` for the rules and the errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use url::{parse};
+    /// # use tests::assert;
+    /// let u = match parse("https://example.com/docs/guide/intro") {
+    ///     Result::Ok(u) => u,
+    ///     Result::Err(_) => panic "bad url",
+    /// };
+    /// let next = match u.join("../api") {
+    ///     Result::Ok(v) => v,
+    ///     Result::Err(_) => panic "bad reference",
+    /// };
+    /// assert!(next.to_string() == "https://example.com/docs/api");
+    /// ```
     pub fn join(string reference) -> Result<Url, UrlError> {
         let r = Url::parse(reference)?;
         let t_scheme = "";
@@ -905,12 +1071,79 @@ impl Url {
     }
 }
 
-/// Parse an absolute URI or relative reference.
+/// Parses an absolute URI (`https://host/path`) or a relative reference (`../a?b`).
+///
+/// A reference without a scheme gets `scheme == ""`. Empty input is an empty
+/// relative reference. The scheme and, for `http`, `https`, `ws` and `wss`, the
+/// host are lowercased; everything else is kept as written. Any scheme parses
+/// (`mailto:`, `git:`); `file:///path` has an empty host.
+///
+/// Returns `UrlError::Invalid` for whitespace or control characters, a `%` not
+/// followed by two hex digits, a non-numeric port or one above 65535, an
+/// unclosed `[` IPv6 host, an empty host for `http`/`https`/`ws`/`wss`, or a
+/// `:` in the first segment of a relative path (`a:b` is read as a scheme, so
+/// write `./a:b`).
+///
+/// # Examples
+///
+/// ```
+/// use url::{parse};
+/// # use tests::assert;
+/// let u = match parse("https://example.com/a/b?q=1#f") {
+///     Result::Ok(u) => u,
+///     Result::Err(_) => panic "bad url",
+/// };
+/// assert!(u.host == "example.com" && u.path == "/a/b");
+/// assert!(u.query_get("q") == "1");
+///
+/// let rel = match parse("../c?x") {
+///     Result::Ok(u) => u,
+///     Result::Err(_) => panic "bad url",
+/// };
+/// assert!(rel.scheme == "" && rel.path == "../c" && rel.has_query);
+///
+/// assert!(parse("http://").is_err());
+/// assert!(parse("http://h/a b").is_err());
+/// ```
 fn parse(string s) -> Result<Url, UrlError> {
     return Url::parse(s)?;
 }
 
-/// Resolve `reference` against `base` (RFC 3986 §5).
+/// Resolves `reference` against `base` (RFC 3986 §5.2), the way a browser follows a link.
+///
+/// A reference with a scheme replaces the base; one starting with `//`
+/// keeps only the base's scheme; an absolute path keeps the base's authority;
+/// a relative path is merged with the base path's directory. `.` and `..`
+/// segments are removed. An empty reference keeps the base path and query;
+/// the fragment always comes from `reference`. Returns `UrlError::Invalid` when
+/// `reference` does not parse.
+///
+/// # Examples
+///
+/// ```
+/// use url::{parse, join, Url};
+/// # use tests::assert;
+///
+/// fn resolve(Url base, string r) -> string {
+///     return match join(base, r) {
+///         Result::Ok(v) => v.to_string(),
+///         Result::Err(_) => "error",
+///     };
+/// }
+///
+/// fn main() {
+///     let u = match parse("http://a/b/c/d;p?q") {
+///         Result::Ok(u) => u,
+///         Result::Err(_) => panic "bad url",
+///     };
+///     assert!(resolve(u, "g") == "http://a/b/c/g");
+///     assert!(resolve(u, "../g") == "http://a/b/g");
+///     assert!(resolve(u, "/g") == "http://a/g");
+///     assert!(resolve(u, "//cdn/g") == "http://cdn/g");
+///     assert!(resolve(u, "?y") == "http://a/b/c/d;p?y");
+///     assert!(resolve(u, "#s") == "http://a/b/c/d;p?q#s");
+/// }
+/// ```
 fn join(Url base, string reference) -> Result<Url, UrlError> {
     return base.join(reference)?;
 }

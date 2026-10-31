@@ -1,6 +1,6 @@
 # Consuming coil-url
 
-This package is `url`. `use url::{parse, join, Url, UrlError}` resolves from `src/url.hy`. This repo is **private** (`https://github.com/ardax-corp/coil-url.git`); clone with credentials that can read it. There is no native/FFI dep.
+This package is `url`. `use url::{parse, join, Url, UrlError}` resolves from `src/url.hy`. The repo is `https://github.com/ardax-corp/coil-url.git`. There is no native/FFI dependency.
 
 ## Depend on it
 
@@ -15,12 +15,13 @@ This repo has no tags, so pin a commit with `--rev`. spool records the dep in `c
 Without spool, clone this repo next to your project and pass the roots yourself. coil reads no `coil.toml` and no `coil.lock`.
 
 ```bash
-coil --root ../coil-url/src main.hy
+git clone https://github.com/ardax-corp/coil-url.git ../coil-url
+coil --root ../coil-stdlib/src --root ../coil-url/src main.hy
 ```
 
 ## Call parse / join
 
-Signatures are in [`src/url.hy`](../src/url.hy). Call patterns are in [`tests/parse.hy`](../tests/parse.hy) and [`tests/join.hy`](../tests/join.hy).
+Signatures and `///` docs with examples are in [`src/url.hy`](../src/url.hy). Call patterns are in [`tests/parse.hy`](../tests/parse.hy) and [`tests/join.hy`](../tests/join.hy).
 
 ```coil
 use url::{parse, join, percent_encode, percent_decode, Url, UrlError};
@@ -45,7 +46,7 @@ let u = parse("http://example.com/path")?;
 let http = u.scheme == "http" && u.host == "example.com" && u.path == "/path";
 ```
 
-`query_get` returns the first matching value, percent-decoded, or `""`. `query_set` returns a new `Url`.
+`query_get` returns the first matching value, percent-decoded, or `""`. `query_set` returns a new `Url` with every pair for that key replaced, or the pair appended.
 
 ### UrlError
 
