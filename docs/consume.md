@@ -1,6 +1,6 @@
 # Consuming coil-url
 
-This package is `url`. `use url::{parse, join, Url, UrlError}` resolves from `src/url.hy`. The repo is `https://github.com/ardax-corp/coil-url.git`. There is no native/FFI dependency.
+This package is `url`. `use url::{parse, join, Url, UrlError}` resolves from `src/url.coil`. The repo is `https://github.com/ardax-corp/coil-url.git`. There is no native/FFI dependency.
 
 ## Depend on it
 
@@ -16,12 +16,12 @@ Without spool, clone this repo next to your project and pass the roots yourself.
 
 ```bash
 git clone https://github.com/ardax-corp/coil-url.git ../coil-url
-coil --root ../coil-stdlib/src --root ../coil-url/src main.hy
+coil --root ../coil-stdlib/src --root ../coil-url/src main.coil
 ```
 
 ## Call parse / join
 
-Signatures and `///` docs with examples are in [`src/url.hy`](../src/url.hy). Call patterns are in [`tests/parse.hy`](../tests/parse.hy) and [`tests/join.hy`](../tests/join.hy).
+Signatures and `///` docs with examples are in [`src/url.coil`](../src/url.coil). Call patterns are in [`tests/parse.coil`](../tests/parse.coil) and [`tests/join.coil`](../tests/join.coil).
 
 ```coil
 use url::{parse, join, percent_encode, percent_decode, Url, UrlError};

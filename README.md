@@ -31,7 +31,7 @@ fn main() {
 ```
 
 ```bash
-coil --root ../coil-stdlib/src --root ../coil-url/src main.hy
+coil --root ../coil-stdlib/src --root ../coil-url/src main.coil
 ```
 
 ## API
@@ -49,13 +49,13 @@ coil --root ../coil-stdlib/src --root ../coil-url/src main.hy
 
 Missing components are `""` and port `0`; the `has_*` flags tell `http://host?` (empty query) from `http://host` (no query). Components stay percent-encoded as written; the scheme is lowercased, and the host too for `http`, `https`, `ws` and `wss`, which also require a non-empty host. Any other scheme parses as generic (`mailto:`, `git://…`), and `file:///path` has an empty host. Bad input returns `UrlError::Invalid`, never a panic.
 
-Every public item has `///` docs with examples in [`src/url.hy`](src/url.hy).
+Every public item has `///` docs with examples in [`src/url.coil`](src/url.coil).
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `src/url.hy` | The whole package: `Url`, `UrlError`, parse, join, query get/set, percent coding |
+| `src/url.coil` | The whole package: `Url`, `UrlError`, parse, join, query get/set, percent coding |
 | `tests/` | `coil test` suites (parse, join, query) |
 | `coil.toml` | spool manifest (`[package] name = "url"`); coil itself does not read it |
 
